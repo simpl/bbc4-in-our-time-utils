@@ -1,0 +1,78 @@
+#! /bin/bash
+
+dir=/mnt/hgfs/Downloads/InOurTime
+
+[[ ! -d "$dir" ]] && echo "[Error] Dir $dir does not exist" && exit 1
+
+cd "$dir"
+
+IFS="
+"
+
+### Rename files with numerical suffixes ###
+
+for f in `ls -1 | grep -P "\([0-9]+\)\.mp3$"`; do
+
+    n=`echo $f | sed -r 's|^([^ ]*).*|\1.mp3|'`
+
+    echo "Moving $f => $n"
+
+    mv "$f" "$n"
+done
+
+
+### Change tag values ###
+
+album="In Our Time"
+track=1
+
+for f in `ls -1 | grep .mp3$`; do
+
+    ## Strip v1 tags
+
+    if [[ `id3v2 --list "$f" | grep 'id3v1 tag info'` != "" ]]; then
+
+        echo "Stripping id3v1 tags from $f"
+
+        ## Stripping needs to be done twice ##
+
+        id3v2 --delete-v1 "$f" &> /dev/null
+        id3v2 --delete-v1 "$f" &> /dev/null
+    fi
+
+
+    ## Set the track number ##
+
+    if [[ "$1" = n ]]; then
+
+        echo "Setting track number for $f"
+
+        id3v2 -2 --TRCK "$track" "$f"
+
+        ((track += 1))
+    fi
+
+
+    ## Check Album
+
+    if [[ "`id3v2 --list "$f" | grep ^TALB | sed -r 's|[^:]*: (.*)$|\1|'`" != "$album" ]]; then
+
+        echo "Setting Album for $f"
+
+        id3v2 -2 --TALB "$album" "$f"
+    fi
+
+
+    ## Check Title ##
+
+    t="`id3v2 --list "$f" | grep ^TIT2 | sed -r 's|[^:]*: (.*)$|\1|'`"
+
+    t2="`echo $t | sed -r 's|^(IOT.*: )||' | sed -r 's|( [0-9]+[^0-9]+[0-9]+)$||'`"
+
+    if [[ "$t" != "$t2" ]]; then
+
+        echo "Setting Title for $f ($t => $t2)"
+
+        id3v2 -2 --TIT2 "$t2" "$f"
+    fi
+done
