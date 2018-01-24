@@ -1,7 +1,7 @@
 Name
 ====
 
-bbc4-in-our-time
+bbc4-in-our-time-utils
 
 Table of Contents
 =================
